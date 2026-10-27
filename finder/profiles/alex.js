@@ -54,7 +54,7 @@ module.exports = {
     sponsorPenalty: ['UK'],                         // tell the AI when an employer there cannot sponsor
     careerjet: { core: { de_DE: 'Germany', en_GB: 'UK' },
       more: { nl_NL: 'Netherlands', en_IE: 'Ireland', de_AT: 'Austria', en_BE: 'Belgium', fr_FR: 'France', es_ES: 'Spain', pt_PT: 'Portugal', sv_SE: 'Sweden', pl_PL: 'Poland' } },
-    useLinkedIn: true,
+    useLinkedIn: false,                             // off by default: LinkedIn's terms do not allow automated access (see README, Responsible use)
     linkedInLocations: ['Germany', 'United Kingdom', 'European Union'],
     linkedInQueries: ['("data analyst" OR "business intelligence" OR "BI analyst" OR "reporting analyst" OR "power bi")',
       '("IT support" OR "service desk" OR "help desk" OR "IT specialist" OR "desktop support")'],

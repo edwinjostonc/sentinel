@@ -42,7 +42,7 @@ module.exports = {
     visaChecks: ['nl'],                             // Dutch IND recognised sponsors (shown, not penalised: EU citizen)
     sponsorPenalty: [],
     careerjet: { core: { nl_NL: 'Netherlands', sv_SE: 'Sweden' }, more: {} },
-    useLinkedIn: true,
+    useLinkedIn: false,                             // off by default: LinkedIn's terms do not allow automated access (see README, Responsible use)
     linkedInLocations: ['Netherlands', 'Sweden'],
     linkedInQueries: ['(sustainability OR ESG OR CSRD OR "carbon accounting" OR "circular economy" OR climate)'],
     linkedInLevels: '2,3',                          // entry, associate

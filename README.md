@@ -49,7 +49,8 @@ clearly do not fit, lets an AI read the rest next to their CV, and sends them a 
 ### Job finder: what happens each morning, in order
 
 1. **Search.** The finder asks each job source switched on in the profile for new ads, using the profile's search words and countries.
-   Sources: Careerjet, LinkedIn (its public job search, without logging in), the national job agencies of Germany (Bundesagentur für Arbeit),
+   Sources: Careerjet, LinkedIn (its public job search, without logging in; switched off in the example profiles, see
+   [Responsible use](#responsible-use-and-legal-notes)), the national job agencies of Germany (Bundesagentur für Arbeit),
    the UK health service (NHS Jobs), Sweden (JobTech) and the EU (EURES), the job boards Arbeitnow, Himalayas and Remotive, and the
    public career pages of chosen companies on Greenhouse, Ashby, SmartRecruiters, Recruitee, Workable and Teamtailor.
    Adzuna can be added with a free key. A source that fails is recorded and skipped; the others carry on.
