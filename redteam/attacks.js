@@ -296,7 +296,7 @@ test('B12', 'blue', 'dependencies', 'n8n is not far behind the newest release', 
   const [im, iv] = n8nVersion().split('.').map(Number), [lm, lv] = latest.split('.').map(Number);
   const behind = im < lm ? Infinity : Math.max(0, lv - iv);
   t.log(`installed ${n8nVersion()} · newest ${latest} · ${behind === Infinity ? 'a whole major version' : behind + ' release(s)'} behind (n8n releases about once a week)`);
-  if (behind) t.log('   to update: close the n8n window, run "npm install -g n8n@latest", then node redteam/run.js and a test email (README section 4)');
+  if (behind) t.log('   to update: close the n8n window, run "npm install -g n8n@latest", then node redteam/run.js and a test email (README, Troubleshooting)');
   t.check('at most 4 releases (about a month) behind, same major version', behind <= 4, `${n8nVersion()} vs ${latest}`);
 });
 
@@ -308,7 +308,7 @@ test('B13', 'blue', 'logins', 'Google logins: warns 2 days before Google ends th
     if (!g.reconnected) { t.check(`${NAMES[g.type]}: no reconnect seen in n8n's log yet (known after the next one)`, null); continue; }
     const left = (Date.parse(g.expires) - Date.now()) / 86400000;
     t.log(`${NAMES[g.type].padEnd(13)} reconnected ${localDayTime(g.reconnected)} -> ends about ${localDayTime(g.expires)} (${left.toFixed(1)} days left)`);
-    t.check(`${NAMES[g.type]}: more than 2 days left`, left > 2, left <= 0 ? 'expired: reconnect now (README section 5)' : 'reconnect soon (README section 5)');
+    t.check(`${NAMES[g.type]}: more than 2 days left`, left > 2, left <= 0 ? 'expired: reconnect now (README, Troubleshooting)' : 'reconnect soon (README, Troubleshooting)');
   }
   // errors from before the last reconnect were fixed by it
   const fixedAt = Math.max(0, ...cred.google.filter((g) => g.reconnected).map((g) => Date.parse(g.reconnected)));

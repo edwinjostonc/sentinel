@@ -90,7 +90,8 @@ clearly do not fit, lets an AI read the rest next to their CV, and sends them a 
    Its score replaces the first one. These are the jobs people actually apply to, so accuracy matters most here.
 10. **Verdict.** Strong = 75 or more, Good = 55 or more, Possible = 40 or more, Weak = below 40.
 11. **Write the sheet.** Jobs with a score of 40 or more (`minFitScoreToLog`) are added to the Jobs tab with: role, company, country, link,
-    score and verdict, why it fits, gaps, 2–3 suggested CV changes (only re-using things already on the CV, never invented ones), visa and
+    score and verdict, why it fits, gaps, 2–3 suggested CV changes (the AI is told to only re-use things already on the CV and never invent skills or
+    experience; check them before using them), visa and
     language notes, salary (also converted to EUR per year with that day's exchange rates). For the UK and the Netherlands, the employer is
     looked up in the official visa-sponsor lists (UK Home Office, Dutch IND). Lower scores and dropped jobs go to the Seen tab.
     If the AI fails for a job, that job is *not* marked as seen, so it is scored in the next run.
@@ -121,7 +122,9 @@ with a free way to learn each (it is told never to recommend paid courses). A ro
 | Operations | Each person's last run, every job source's results and errors, filtered ads, an event timeline |
 | Defence | The red-team suite with a live log, open network ports, firewall, login expiry, workflow integrity |
 
-### Red-team suite (34 tests, about 330 checks)
+### Red-team suite (34 tests)
+
+The number of individual checks depends on how many people are set up (about 330 with three people).
 
 Runs the real workflow code against hostile input and checks the live setup. Two groups:
 
@@ -183,12 +186,12 @@ redteam/server.js (http://127.0.0.1:7777) reads the n8n database, n8n's log, Tas
 
 - **Cost: none.** n8n self-hosted, the Gemini API free tier and a normal Google account are free; no credit card is needed.
   Do not click "Set up billing" in Google AI Studio.
-- **Gemini free-tier limits** (as shown in Google AI Studio for this project in October 2026; Google changes them, check
-  [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit)): Flash-Lite models 500 requests per day, Flash models 20 per day.
+- **Gemini free-tier limits** (as shown in Google AI Studio for this project in October 2026; Google changes them, so check the current
+  numbers in [Google AI Studio](https://aistudio.google.com)): Flash-Lite models 500 requests per day, Flash models 20 per day.
   Scoring uses Flash-Lite (one call per 10 jobs); the double-check uses Flash. With the example settings, one person uses at most 8–13 calls
   a day (`alex.js`: 10 scoring + 3 double-check; `maria.js`: 6 + 2) plus one on Sundays.
-- **Google logins expire every 7 days** while the Google Cloud app is in "Testing" mode (see [Troubleshooting](#troubleshooting)). The console
-  warns 2 days before.
+- **Google logins expire every 7 days** while the Google Cloud app is in "Testing" mode (see [Troubleshooting](#troubleshooting)). Once n8n's
+  log has recorded a reconnect, the red team (Defence tab) warns when less than 2 days are left.
 - **The laptop must be on (or asleep, not shut down) and plugged in** at the scheduled time. The task wakes it from sleep, catches up if it
   was off, and retries every hour for 6 hours.
 
@@ -282,7 +285,7 @@ When Google warns *"Google hasn't verified this app"*, click **Continue** (it is
 | `prompt.languageRule`, `domainHint` | which language levels are a problem for you; a hint about your field (or `''`) |
 | `redteamMarkers` | 2–3 phrases that appear only in your profile (used by the privacy test), e.g. a phrase from `aboutMe` |
 | `host.ids` | six new workflow ids, 16 letters/digits each, e.g. `SentinelSamFind1`, `SentinelSamChck1` ... (must be unique) |
-| `host.names` | your name in `folder`, `sheet`, `cvDoc`, `label`, `sender`; `time` = when your email should come; `where` = a short text for the console |
+| `host.names` | your name in `folder`, `sheet`, `cvDoc`, `label`, `sender`; `time` = the same start time you will give the Windows task in step 11 (the console uses it to know when the email is due); `where` = a short text for the console |
 | `host.stateFile` | `host-sam.json` |
 | `host.brokerPort` | an internal port number (a "door" n8n uses on your own laptop). Each person needs their own, and the daily task uses that number + 1. The examples use 5695–5698 and the console 5699, so use `5691` for the first new person, `5693` for the next |
 | `search.searchWords` | what you would type into a job site, e.g. `['accountant', 'accounts assistant']` |
@@ -306,7 +309,7 @@ node tools/host.js --profile=sam --to=you@gmail.com --test --max=10
 ```
 
 The first time, this creates the folder named in `host.names.folder` (e.g. **"Sam Job Finder"**) in your Google Drive, with your job sheet and a copy of your CV.
-Then it searches all sources, scores at most 10 jobs (about 2–3 AI calls) and emails you a list whose subject starts with **TEST**.
+Then it searches all sources, scores at most 10 jobs (1 scoring call, plus up to 2 double-check calls) and emails you a list whose subject starts with **TEST**.
 It takes 3–10 minutes. Your sheet is not changed by a test.
 
 Not happy with the jobs? Change the search words or filters in your profile and run the test again.
@@ -323,7 +326,8 @@ This imports your workflows into n8n and formats your job sheet. It ends with th
 
 1. Press the Windows key, type **Task Scheduler**, open it. Click **Create Task...** (not "Basic Task").
 2. **General** tab: Name `Sam Daily Job Email`. Leave *Run only when user is logged on* selected.
-3. **Triggers** tab → **New**: *Daily*, start time e.g. `07:15`. Tick **Repeat task every** `1 hour` **for a duration of** `6 hours`. OK.
+3. **Triggers** tab → **New**: *Daily*, start time e.g. `07:15`. Tick **Repeat task every** `1 hour` **for a duration of** `6 hours`
+   (6 hours is not in the list: click into the box and type `6 hours`). OK.
 4. **Actions** tab → **New**: Program `powershell.exe`, arguments (change the folder and name):
    ```
    -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Users\<you>\Sentinel\tools\daily.ps1" -Person sam
@@ -336,10 +340,12 @@ This imports your workflows into n8n and formats your job sheet. It ends with th
 ### Step 12: Open the console
 
 Double-click `tools\open-sentinel.vbs` in the Sentinel folder. It starts the console in the background and opens http://127.0.0.1:7777.
-For a desktop icon: right-click `open-sentinel.vbs` → **Show more options → Send to → Desktop (create shortcut)**.
+It expects Node.js in its default place (`C:\Program Files\nodejs`), which is where step 1 installs it.
+For a desktop icon: right-click `open-sentinel.vbs` → **Send to → Desktop (create shortcut)** (on Windows 11, click **Show more options** first).
 
-To check the setup, open the **Defence** tab and click **Run red team** (about 1–2 minutes). A fresh install shows a few expected
-warnings, for example no weekly backup set up.
+To check the setup, open the **Defence** tab and click **Run red team** (about 1–2 minutes). A fresh install shows some checks as
+skipped or failed until it has run for a few days, for example "no weekly backup set up" (the backup script is not part of this
+repository) or "no reconnect seen in n8n's log yet".
 
 ## Daily use
 
@@ -369,6 +375,7 @@ Keep the total AI calls within the free limits ([Costs and limits](#costs-and-li
 | Gemini "quota" or "too many requests" | The free daily limit was reached (often after many tests). Unscored jobs are retried the next day automatically. |
 | Very few jobs | Check `titleWordsA` and `excludeTitleWords` in your profile; the console's **Operations** tab shows how many ads each source found and kept. |
 | Console says "workflow differs from the reviewed build" | A workflow was changed in the n8n editor. Run step 10 again to restore it. |
+| Red team says n8n is out of date or has known vulnerabilities | Close the n8n window, run `npm install -g n8n@latest` in PowerShell, start n8n again with `start-n8n.bat` (the first start after an update takes longer), then run the red team and a test email (step 9) to confirm everything still works. Tested with n8n 2.45.4. |
 | Console page does not load | Double-click `open-sentinel.vbs` again; details are in `logs\sentinel.log`. |
 
 ## Known limitations
