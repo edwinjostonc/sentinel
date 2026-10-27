@@ -1,0 +1,23 @@
+{
+  "id": "SentinelPreCheck",
+  "name": "Sentinel: Google login pre-check (read only)",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    { "id": "pc-start", "name": "Run Now (Manual)", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {} },
+    { "id": "pc-sheets", "name": "Sheets Login", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4.7, "position": [220, 0], "executeOnce": true, "alwaysOutputData": true,
+      "parameters": { "documentId": { "__rl": true, "mode": "id", "value": "__SHEET_ID__" }, "sheetName": { "__rl": true, "mode": "name", "value": "Seen" }, "options": {} } },
+    { "id": "pc-docs", "name": "Docs Login", "type": "n8n-nodes-base.googleDocs", "typeVersion": 2, "position": [440, 0], "executeOnce": true,
+      "parameters": { "operation": "get", "documentURL": "__MASTER_RESUME_DOC_ID__", "simple": true } },
+    { "id": "pc-gmail", "name": "Gmail Login", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [660, 0], "executeOnce": true, "alwaysOutputData": true,
+      "parameters": { "resource": "message", "operation": "getAll", "returnAll": false, "limit": 1, "simple": true, "filters": {} } },
+    { "id": "pc-ok", "name": "All OK", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [880, 0], "executeOnce": true,
+      "parameters": { "jsCode": "return [{ json: { precheck: 'ok' } }];" } }
+  ],
+  "connections": {
+    "Run Now (Manual)": { "main": [[{ "node": "Sheets Login", "type": "main", "index": 0 }]] },
+    "Sheets Login": { "main": [[{ "node": "Docs Login", "type": "main", "index": 0 }]] },
+    "Docs Login": { "main": [[{ "node": "Gmail Login", "type": "main", "index": 0 }]] },
+    "Gmail Login": { "main": [[{ "node": "All OK", "type": "main", "index": 0 }]] }
+  }
+}

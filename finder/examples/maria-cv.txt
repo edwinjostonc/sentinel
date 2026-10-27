@@ -1,0 +1,22 @@
+MARIA EXAMPLE (fictional person, sample CV for Sentinel)
+Rotterdam, Netherlands | maria@example.com | linkedin.com/in/example
+
+PROFILE
+Sustainability analyst with an MSc in Environmental Management. Experience with carbon accounting (GHG Protocol, scope 1-3),
+CSRD / ESRS reporting and ESG data collection for mid-sized companies.
+
+SKILLS
+GHG Protocol, CSRD / ESRS, life-cycle assessment basics, Excel, Power BI, SQL basics, stakeholder interviews, report writing.
+
+EDUCATION
+MSc Environmental Management, Example University Rotterdam, 2023 - 2025
+BSc Environmental Engineering, Example University Lisbon, 2019 - 2022
+
+EXPERIENCE
+Sustainability Reporting Intern, Example Consulting BV, 2025 (6 months)
+  Collected scope 1-3 data for three clients, drafted CSRD double-materiality summaries.
+Research Assistant, Example University Rotterdam, 2024
+  Carbon footprint of the campus food supply chain.
+
+LANGUAGES
+English (fluent), Portuguese (native), Dutch (A2)

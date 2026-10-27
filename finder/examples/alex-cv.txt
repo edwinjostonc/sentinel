@@ -1,0 +1,24 @@
+ALEX EXAMPLE (fictional person, sample CV for Sentinel)
+Berlin, Germany | alex@example.com | linkedin.com/in/example
+
+PROFILE
+Junior data analyst with an MSc in Data Science. Builds SQL reports and Power BI dashboards, cleans messy data with Python,
+and has supported users as part of a university IT service desk.
+
+SKILLS
+SQL (PostgreSQL), Python (pandas, matplotlib), Power BI, Excel (pivot tables, Power Query), Git, basic Azure,
+ticketing systems (Jira Service Management), Windows and Microsoft 365 administration basics.
+
+EDUCATION
+MSc Data Science, Example University Berlin, 2024 - 2026
+  Project: predicting patient wait times in outpatient clinics from appointment data (Python, scikit-learn).
+BSc Computer Science, Example University, 2020 - 2023
+
+EXPERIENCE
+IT Service Desk Assistant (part-time), Example University Berlin, 2024 - 2026
+  First-level support for staff and students: accounts, laptops, Microsoft 365, printers; documented fixes in the knowledge base.
+Data Analyst Intern, Example Retail GmbH, 2023 (6 months)
+  Built a weekly sales dashboard in Power BI; automated an Excel report with Python.
+
+LANGUAGES
+English (fluent), German (A2, learning), Spanish (native)

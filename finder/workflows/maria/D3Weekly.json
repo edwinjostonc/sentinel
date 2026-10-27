@@ -1,0 +1,605 @@
+{
+  "id": "SentinelD3Weekly",
+  "name": "D3 Weekly Summary (Sunday 18:00)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                0
+              ],
+              "triggerAtHour": 18,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "a1554c5e-f890-cb66-8c0a-ea80150ee535",
+      "name": "Every Sunday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ef440c06-0f6a-19a4-ca8b-a3e42d8bcbc1",
+      "name": "Run Now (Manual)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { digestEmail: '__DIGEST_EMAIL__' } }];"
+      },
+      "id": "19576ab2-1237-919d-cad6-e3af165c6fb5",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "__SHEET_ID__"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "options": {}
+      },
+      "id": "2a84fcd5-831e-b5b1-da58-45bc8ec34018",
+      "name": "Get All Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        400,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stats for the last 7 days and a short job list for the AI.\r\nconst rows = $input.all().map((i) => i.json).filter((r) => r && r.Role);\r\nconst since = $now.minus({ days: 7 }).toFormat('yyyy-MM-dd');\r\nconst week = rows.filter((r) => String(r['Date Found'] || '') >= since);\r\nconst count = (f) => rows.filter(f).length;\r\nconst best = [...week].sort((a, b) => Number(b['Fit Score']) - Number(a['Fit Score'])).slice(0, 25);\r\nconst byCountry = {};\r\nfor (const r of week) byCountry[r.Country || '?'] = (byCountry[r.Country || '?'] || 0) + 1;\r\nreturn [{ json: {\r\n  weekOf: $now.minus({ days: 6 }).toFormat('yyyy-MM-dd') + ' → ' + $now.toFormat('yyyy-MM-dd'),\r\n  found: week.length,\r\n  strong: week.filter((r) => Number(r['Fit Score']) >= 75).length,\r\n  appliedTotal: count((r) => ['Applied', 'Interview', 'Offer', 'Rejected'].includes(r.Status)),\r\n  interviewsTotal: count((r) => ['Interview', 'Offer'].includes(r.Status)),\r\n  byCountry: Object.entries(byCountry).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(', '),\r\n  bestCompanies: [...new Set(best.slice(0, 8).map((r) => r.Company))].join(', '),\r\n  jobsText: best.map((r) => `- ${r.Role} at ${r.Company} (${r.Country}, fit ${r['Fit Score']}). Gaps: ${r.Gaps || 'none'}. Why: ${r['Why It Fits'] || ''}`).join('\\n'),\r\n  nothing: week.length === 0,\r\n} }];\r\n"
+      },
+      "id": "1029e9f1-56d2-bd73-5840-ba474bbc5de6",
+      "name": "Weekly Numbers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "__MASTER_RESUME_DOC_ID__",
+        "simple": true
+      },
+      "id": "4f88f52e-7722-5b87-7cef-c7b4398433b6",
+      "name": "Get Master Resume",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dccc798d-45d8-1b06-226a-2a589aebe7d2",
+              "leftValue": "={{ $('Weekly Numbers').first().json.nothing }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "4db44b6d-0a05-c6e3-68d8-4b4cd560f680",
+      "name": "Any Jobs This Week?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a career coach for sustainability, ESG and green-business jobs. Below are the best-matching jobs found for me this week (with the gaps a recruiter saw) and MY RESUME.\r\n\r\nReturn:\r\n- top_skills: the 5 skills, tools or frameworks these employers asked for most often (short names).\r\n- top_gaps: the 3-5 requirements I am missing most often (only things NOT in MY RESUME).\r\n- learn_next: 3 concrete next steps to close the most valuable gaps, each with a free way to learn it (for example \"GHG Protocol Scope 3 – free GHG Protocol e-learning\"). Do not recommend anything paid.\r\n- advice: one sentence of practical advice for my applications next week, based only on these jobs and MY RESUME.\r\n\r\nNever claim I have skills that are not in MY RESUME. Return only the JSON object.\r\n\r\nTHIS WEEK'S BEST JOBS:\r\n{{ $('Weekly Numbers').first().json.jobsText }}\r\n\r\nMY RESUME:\r\n{{ ($('Get Master Resume').first().json.content || '').slice(0, 7000) }}",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "batching": {
+          "batchSize": 1,
+          "delayBetweenBatches": 4000
+        }
+      },
+      "id": "def66af4-4678-0842-84e8-166a3e60603c",
+      "name": "AI: Weekly Insights",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1250,
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "28d19357-783c-f1fc-9498-90a8763acfaa",
+      "name": "Gemini (Weekly Insights)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1190,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "91f4f6c6-9ecd-13eb-739a-e50c35959c42",
+      "name": "Gemini Fallback (Weekly Insights)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1330,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"required\": [\n    \"top_skills\",\n    \"top_gaps\",\n    \"learn_next\",\n    \"advice\"\n  ],\n  \"properties\": {\n    \"top_skills\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"top_gaps\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"learn_next\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"advice\": {\n      \"type\": \"string\"\n    }\n  }\n}"
+      },
+      "id": "c791f1dd-9e23-9d7a-0ce7-5bfbe51eea8b",
+      "name": "Parser: Weekly Insights",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1470,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Weekly tab row and summary email.\r\nconst s = $('Weekly Numbers').first().json;\r\nconst c = $('Config').first().json;\r\nlet a = {};\r\ntry { a = $('AI: Weekly Insights').first().json.output || {}; } catch (e) { /* no AI this week */ }\r\nconst list = (x) => (Array.isArray(x) ? x : String(x || '').split(/\\s*\\|\\s*/)).filter(Boolean);\r\nconst row = { 'Week': s.weekOf, 'Jobs Found': s.found, 'Strong (75+)': s.strong, 'Applied (total)': s.appliedTotal, 'Interviews (total)': s.interviewsTotal,\r\n  'By Country': s.byCountry, 'Top Skills Asked': list(a.top_skills).join(', '), 'Your Top Gaps': list(a.top_gaps).join(', '),\r\n  'Learn Next': list(a.learn_next).join(' | '), 'Best Companies': s.bestCompanies };\r\nconst esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');\r\nconst html = `<div style=\"font-family:Arial,sans-serif;max-width:640px\"><h2>Your job search this week</h2>\r\n<p><b>${s.found}</b> new jobs found (<b>${s.strong}</b> strong matches). Applied so far: <b>${s.appliedTotal}</b>, interviews: <b>${s.interviewsTotal}</b>.</p>\r\n<p><b>Where:</b> ${esc(s.byCountry)}</p>\r\n${row['Top Skills Asked'] ? `<p><b>Skills employers asked for most:</b> ${esc(row['Top Skills Asked'])}</p>` : ''}\r\n${row['Your Top Gaps'] ? `<p><b>Your most common gaps:</b> ${esc(row['Your Top Gaps'])}</p>` : ''}\r\n${list(a.learn_next).length ? `<p><b>Learn next:</b></p><ul>${list(a.learn_next).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}\r\n${a.advice ? `<p><b>Tip:</b> ${esc(a.advice)}</p>` : ''}\r\n<p><a href=\"https://docs.google.com/spreadsheets/d/__SHEET_ID__/edit\">Open your Job Tracker</a></p></div>`;\r\nreturn [{ json: { row, to: c.digestEmail, subject: `Weekly job search summary – ${s.found} jobs, ${s.strong} strong`, html } }];\r\n"
+      },
+      "id": "2ccab9ca-5221-d96c-fb91-ae0d873c0ea7",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.row }];"
+      },
+      "id": "45080e7e-9a70-acf2-7305-c58a2f4b679a",
+      "name": "Weekly Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1750,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "__SHEET_ID__"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Weekly"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Week": "={{ $json[\"Week\"] }}",
+            "Jobs Found": "={{ $json[\"Jobs Found\"] }}",
+            "Strong (75+)": "={{ $json[\"Strong (75+)\"] }}",
+            "Applied (total)": "={{ $json[\"Applied (total)\"] }}",
+            "Interviews (total)": "={{ $json[\"Interviews (total)\"] }}",
+            "By Country": "={{ $json[\"By Country\"] }}",
+            "Top Skills Asked": "={{ $json[\"Top Skills Asked\"] }}",
+            "Your Top Gaps": "={{ $json[\"Your Top Gaps\"] }}",
+            "Learn Next": "={{ $json[\"Learn Next\"] }}",
+            "Best Companies": "={{ $json[\"Best Companies\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Week",
+              "displayName": "Week",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Jobs Found",
+              "displayName": "Jobs Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Strong (75+)",
+              "displayName": "Strong (75+)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied (total)",
+              "displayName": "Applied (total)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Interviews (total)",
+              "displayName": "Interviews (total)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "By Country",
+              "displayName": "By Country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Top Skills Asked",
+              "displayName": "Top Skills Asked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Your Top Gaps",
+              "displayName": "Your Top Gaps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Learn Next",
+              "displayName": "Learn Next",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Best Companies",
+              "displayName": "Best Companies",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "2ebe1eaa-b26f-c765-bc47-2d9cbeb1ec2e",
+      "name": "Add to Weekly",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1950,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "788cab48-002a-343d-931e-6aa2d8f08f44",
+              "leftValue": "={{ $json.to }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "20792e03-ec60-0361-8ad7-16ac7a287135",
+      "name": "Has Email?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1750,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "36f5cf29-f280-8df6-6884-2db061a12195",
+      "name": "Email Summary",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1950,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Gemini (Weekly Insights)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: Weekly Insights",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Fallback (Weekly Insights)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: Weekly Insights",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parser: Weekly Insights": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI: Weekly Insights",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Sunday": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Now (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Jobs": {
+      "main": [
+        [
+          {
+            "node": "Weekly Numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Numbers": {
+      "main": [
+        [
+          {
+            "node": "Get Master Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Master Resume": {
+      "main": [
+        [
+          {
+            "node": "Any Jobs This Week?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Jobs This Week?": {
+      "main": [
+        [
+          {
+            "node": "AI: Weekly Insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Weekly Insights": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Weekly Row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Row": {
+      "main": [
+        [
+          {
+            "node": "Add to Weekly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Email?": {
+      "main": [
+        [
+          {
+            "node": "Email Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Amsterdam",
+    "errorWorkflow": "JobApp99ErrorLog"
+  }
+}

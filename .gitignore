@@ -1,0 +1,21 @@
+# Runtime logs (may contain job data and email addresses)
+logs/
+
+# Personal data: real CVs never go in git (the fictional samples in finder/examples/ do)
+finder/*-cv.*
+finder/my-cv.txt
+resume.*
+~$*
+
+# Secrets / credential exports: never commit
+*.env
+.env*
+*credentials*.json
+client_secret*.json
+
+# Drive ids and who the sheet is shared with (written by tools/host.js)
+tools/host-*.json
+
+# Local state and test output
+finder/test/out/
+redteam/out/

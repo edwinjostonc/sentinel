@@ -1,0 +1,209 @@
+{
+  "id": "SentinelD2Daily0",
+  "name": "D2 Daily Check (expired jobs, follow-ups)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "09932df8-1791-7fc1-6a1e-8acbeee72163",
+      "name": "Every Morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4e0ad2d9-e86e-d586-8081-fc6deb6c5681",
+      "name": "Run Now (Manual)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "__SHEET_ID__"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "options": {}
+      },
+      "id": "69d0874b-4067-b926-3946-37580e0f51de",
+      "name": "Get All Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        250,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Daily sheet check: fill in Applied On, flag follow-ups after 7 days, mark dead job links as Expired.\r\n// Job links come from the sheet, which people can edit: only public web addresses are opened (lib/net-guard.js).\r\n// Links in the sheet can be edited by hand (a person the sheet is shared with can edit it), so before the daily check opens one it must be\r\n// a normal public web address: http(s), a real domain name, default port, no login part. IP addresses, localhost and\r\n// internal names are refused, so the check cannot be pointed at this laptop or the home network.\r\n// Written without URL() so it behaves the same inside n8n's Code node sandbox.\r\nconst INTERNAL_TLD = /\\.(local|localhost|localdomain|internal|intranet|lan|home|corp|private|test|invalid|example|arpa|home\\.arpa)$/;\r\nfunction publicUrl(u) {\r\n  const m = String(u || '').trim().match(/^(https?):\\/\\/([^/?#\\s]+)([/?#][^\\s]*)?$/i);\r\n  if (!m) return '';\r\n  const auth = m[2].toLowerCase();\r\n  if (auth.includes('@') || auth.includes('%') || auth.includes('\\\\')) return '';\r\n  const hp = auth.match(/^([a-z0-9.-]+)(?::(\\d{1,5}))?$/);\r\n  if (!hp) return '';   // IPv6 literals, unicode or odd characters\r\n  const host = hp[1].replace(/\\.$/, ''), port = hp[2];\r\n  if (port && !((m[1].toLowerCase() === 'http' && port === '80') || (m[1].toLowerCase() === 'https' && port === '443'))) return '';\r\n  if (!host.includes('.') || /^localhost(\\.|$)/.test(host) || INTERNAL_TLD.test(host)) return '';\r\n  // any all-numeric/hex label set is an IP address in one of its spellings (127.0.0.1, 2130706433, 0x7f.1, 0177.0.0.1)\r\n  if (host.split('.').every((p) => /^(0x[0-9a-f]*|\\d+)$/.test(p))) return '';\r\n  if (host.split('.').some((p) => !p || p.length > 63 || p.startsWith('-') || p.endsWith('-'))) return '';\r\n  return String(u).trim();\r\n}\r\n// GET a public page; redirects are followed by hand (at most 4), each new address checked again.\r\nasync function publicGet(helpers, url, headers) {\r\n  for (let hop = 0; hop < 5; hop++) {\r\n    if (!publicUrl(url)) return { statusCode: 0, body: '', refused: true };\r\n    const r = await helpers.httpRequest({ url, headers, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true, disableFollowRedirect: true });\r\n    const to = r.statusCode >= 300 && r.statusCode < 400 && r.headers && r.headers.location;\r\n    if (!to) return r;\r\n    url = /^https?:\\/\\//i.test(to) ? to : String(to).startsWith('/') ? url.match(/^https?:\\/\\/[^/]+/i)[0] + to : '';\r\n  }\r\n  return { statusCode: 0, body: '', refused: true };\r\n}\r\nconst UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36', 'Accept-Language': 'en' };\r\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\r\nconst today = $now.startOf('day');\r\n// accepts 2026-10-04, 04/10/2026, 4.10.2026 (day first) or a Sheets serial number\r\nfunction parse(v) {\r\n  const s = String(v || '').trim();\r\n  let m;\r\n  if ((m = s.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/))) return DateTime.fromObject({ year: +m[1], month: +m[2], day: +m[3] });\r\n  if ((m = s.match(/^(\\d{1,2})[./-](\\d{1,2})[./-](\\d{2,4})$/))) return DateTime.fromObject({ year: m[3].length === 2 ? 2000 + +m[3] : +m[3], month: +m[2], day: +m[1] });\r\n  if (/^\\d{5}$/.test(s)) return DateTime.fromObject({ year: 1899, month: 12, day: 30 }).plus({ days: +s });\r\n  return null;\r\n}\r\nconst GONE = /(no longer (available|accepting|active|open)|job (has )?expired|position (has been )?(filled|closed)|vacancy (is )?(closed|expired)|this job is (closed|no longer)|vacature is (niet meer|gesloten|verlopen)|stelle ist nicht mehr|offre (n'est plus|expirée))/i;\r\nconst ashbyBoards = {};\r\nasync function isGone(link) {\r\n  if (!publicUrl(link)) return false;\r\n  // Ashby job pages return 200 even when the job is gone, so check the board API\r\n  const ashby = String(link).match(/jobs\\.ashbyhq\\.com\\/([^/]+)\\/([0-9a-f-]{36})/i);\r\n  if (ashby) {\r\n    ashbyBoards[ashby[1]] = ashbyBoards[ashby[1]] || await this.helpers.httpRequest({ url: `https://api.ashbyhq.com/posting-api/job-board/${ashby[1]}`, json: true, timeout: 25000 });\r\n    return !(ashbyBoards[ashby[1]].jobs || []).some((j) => j.id === ashby[2]);\r\n  }\r\n  const sr = String(link).match(/jobs\\.smartrecruiters\\.com\\/([^/]+)\\/(\\d+)/);\r\n  if (sr) {\r\n    const r = await this.helpers.httpRequest({ url: `https://api.smartrecruiters.com/v1/companies/${sr[1]}/postings/${sr[2]}`, json: true, timeout: 25000, returnFullResponse: true, ignoreHttpStatusErrors: true });\r\n    return r.statusCode === 404 || (r.body && r.body.active === false);\r\n  }\r\n  const li = String(link).match(/linkedin\\.com\\/jobs\\/view\\/(\\d+)/);\r\n  const url = li ? `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${li[1]}` : link;\r\n  const r = await publicGet(this.helpers, url, UA);\r\n  if (r.refused) return false;   // not a public web address: never opened, the row is left alone\r\n  if ([404, 410].includes(r.statusCode)) return true;\r\n  if (r.statusCode >= 300) return false;   // blocked, server error or too many redirects: try again tomorrow\r\n  return GONE.test(String(r.body || '').slice(0, 300000));\r\n}\r\n\r\nconst rows = $input.all().map((i) => i.json).filter((r) => r && r.row_number);\r\nconst updates = [];\r\nlet checks = 0;\r\nfor (const r of rows) {\r\n  const u = { row_number: r.row_number, Status: r.Status || '', 'Applied On': r['Applied On'] || '', 'Follow-up': r['Follow-up'] || '' };\r\n  let changed = false;\r\n  if (u.Status === 'Applied' && !u['Applied On']) { u['Applied On'] = today.toFormat('yyyy-MM-dd'); changed = true; }\r\n  const applied = parse(u['Applied On']);\r\n  if (u.Status === 'Applied' && !u['Follow-up'] && applied && today.diff(applied, 'days').days >= 7) { u['Follow-up'] = 'Due – send a short follow-up'; changed = true; }\r\n  const found = parse(r['Date Found']);\r\n  if (u.Status === 'To apply' && r['Job Link'] && found && today.diff(found, 'days').days >= 2 && checks < 50) {\r\n    checks++;\r\n    try { if (await isGone.call(this, r['Job Link'])) { u.Status = 'Expired'; changed = true; } } catch (e) { /* network problem: check again tomorrow */ }\r\n    await sleep(/linkedin/.test(r['Job Link']) ? 2000 : 400);\r\n  }\r\n  if (changed) updates.push({ json: u });\r\n}\r\nreturn updates;\r\n"
+      },
+      "id": "a41da310-bde9-6305-ca15-5de40b0fa192",
+      "name": "Check Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "__SHEET_ID__"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Status": "={{ $json[\"Status\"] }}",
+            "Applied On": "={{ $json[\"Applied On\"] }}",
+            "Follow-up": "={{ $json[\"Follow-up\"] }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied On",
+              "displayName": "Applied On",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up",
+              "displayName": "Follow-up",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "41e5a3f9-c835-a978-6fa0-b5464a693212",
+      "name": "Update Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        750,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every Morning": {
+      "main": [
+        [
+          {
+            "node": "Get All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Now (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Get All Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Jobs": {
+      "main": [
+        [
+          {
+            "node": "Check Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Rows": {
+      "main": [
+        [
+          {
+            "node": "Update Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Berlin",
+    "errorWorkflow": "JobApp99ErrorLog"
+  }
+}
