@@ -16,14 +16,16 @@ const unescapeXml = (s) => String(s || '').replace(/&lt;/g, '<').replace(/&gt;/g
 const since = new Date(Date.now() - CFG.maxAgeDays * 86400000).toISOString().slice(0, 19);
 const tasks = [];
 
-// Careerjet: all search words in the core countries, the first 3 in the "more" countries
+// Careerjet: all search words in the core countries, the first 3 in the "more" countries.
+// The API works without a partner id; careerjet.affid in the profile adds your own (careerjet.com/partners).
 const CJ = CFG.careerjet || { core: {}, more: {} };
+const CJ_AFFID = /^[0-9a-f]{16,32}$/i.test(CJ.affid || '') ? { affid: CJ.affid } : {};
 for (const [locale, country] of [...Object.entries(CJ.core || {}), ...Object.entries(CJ.more || {})]) {
   const words = (CJ.core || {})[locale] ? WORDS : WORDS.slice(0, 3);
   for (const w of words) tasks.push(async () => {
     try {
       const r = await http('http://public.api.careerjet.net/search', { headers: { Referer: 'http://localhost/job-finder' },
-        qs: { locale_code: locale, keywords: w, sort: 'date', pagesize: 50, page: 1, affid: '0afaf0173305e4b9', user_ip: '127.0.0.1', user_agent: 'Mozilla/5.0' } });
+        qs: { locale_code: locale, keywords: w, sort: 'date', pagesize: 50, page: 1, ...CJ_AFFID, user_ip: '127.0.0.1', user_agent: 'Mozilla/5.0' } });
       for (const j of (r.jobs || [])) keepJob('Careerjet', { id: 'CJ-' + String(j.url || '').slice(-40), title: j.title, company: j.company, location: j.locations,
         country: countryOf(j.locations) || country, link: j.url, posted: day(j.date), description: j.description,
         salary: j.salary_min || j.salary_max ? { min: Number(j.salary_min) || 0, max: Number(j.salary_max) || 0, cur: j.salary_currency_code || '', per: PER[j.salary_type] || 'year' } : null });

@@ -398,8 +398,9 @@ What you should know before running it:
   **LinkedIn is different:** it reads LinkedIn's public guest job search, which is not an official API, and LinkedIn's User Agreement
   does not allow automated access. The code keeps the volume low (a pause of 2–3.5 seconds between requests, and it stops for the day
   if LinkedIn asks it to slow down), but low volume does not change the terms. If you are unsure, set `useLinkedIn: false` in your profile.
-- **Careerjet** asks API users for their own partner id. The code contains the sample id from the documentation of Careerjet's own PHP client
-  (`affid` in `finder/src/fetch-boards.js`), not a personal one; sign up for your own at [careerjet.com/partners](https://www.careerjet.com/partners/) and replace it.
+- **Careerjet** offers a partner id to people who use its API. The search works without one, so none is included. If you want to use your own,
+  sign up at [careerjet.com/partners](https://www.careerjet.com/partners/) and add it to your profile:
+  `careerjet: { affid: 'your-id', core: { ... } }`.
 - **Other people's data.** Only run it for people who asked for it. Their CV is personal data: it is sent to Google Gemini for scoring and
   stored in their Google Drive. Tell them that, and see the free-tier note in [Security](#security).
 - **Google and Gemini terms** apply to your use of their APIs.
