@@ -9,6 +9,7 @@ health and security of the whole setup, backed by a red-team suite of 34 automat
 
 It runs on one Windows laptop with free tools: [n8n](https://n8n.io) (self-hosted workflow engine), the Google Gemini API free tier,
 Google Sheets, Docs, Drive and Gmail, and Windows Task Scheduler. There is no server to rent and nothing to pay for.
+The project itself is free and may not be sold ([license](#license)).
 
 **Status:** in daily use since October 2026 by 3 people with different searches (data/BI in Germany and the UK; sustainability/ESG in the
 Netherlands, Sweden, the UAE and India; data and retail analytics in Germany and the EU). Two more people are joining.
@@ -401,7 +402,7 @@ What you should know before running it:
 - **Other people's data.** Only run it for people who asked for it. Their CV is personal data: it is sent to Google Gemini for scoring and
   stored in their Google Drive. Tell them that, and see the free-tier note in [Security](#security).
 - **Google and Gemini terms** apply to your use of their APIs.
-- **No warranty.** The software is provided as is (see the MIT [License](LICENSE)). This section is not legal advice; the rules that apply
+- **No warranty.** The software is provided as is, without any warranty (see [LICENSE](LICENSE), section 5). This section is not legal advice; the rules that apply
   depend on your country and on each website's terms.
 
 ## Repository layout
@@ -423,4 +424,18 @@ What you should know before running it:
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Built by Edwin Joston Cherayath.
+**Sentinel is free for everyone, and must stay free.** It is licensed under
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (Creative Commons Attribution-NonCommercial-ShareAlike);
+the full text is in [LICENSE](LICENSE). Built by Edwin Joston Cherayath.
+
+In plain words:
+
+- **You may** use it for yourself, your friends or your family, learn from it, change it, and share it or your changed version for free.
+- **You must** credit the author (name and a link to this repository) and say if you changed it.
+- **You may not** sell it or any version of it, put it behind a paywall, a membership or a "link in bio" purchase, sell it as a template,
+  course, e-book or bundle, or charge people to set it up for them. This applies to every medium, including content creators selling it
+  on YouTube, TikTok, Instagram, Gumroad, Patreon or similar.
+- **If you share a changed version**, it must be under this same license, so it also stays free.
+
+Writing about it or showing it in a video is fine as long as you credit it and do not sell or charge for the project itself.
+The license text is what counts legally; this summary only explains it.
